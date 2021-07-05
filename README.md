@@ -193,14 +193,82 @@ ex )
      * 튜플을 삽입하는 **INSERT**
      * 튜플을 변경하는 **UPDATE**
      * 튜플을 삭제하는 **DELETE**
-    * 자세한건 이후에 함수들을 통해 다룰예정
+    
+   * 자세한건 이후에 함수들을 통해 다룰예정
    
-  ### 최적화와
+  ### 최적화와 인덱스
+   * 인덱스 : 대표적 예시는 책의 색인을 생각하면된다. 인덱스는 빠른 검색을 가능하게 해주고, 데이터가 정렬되어있다.
+    * 기존에 employees 라는 30만건정도 있는 테이블에 'Tommaso'라는 이름을 가진 사원을 찾는경우 0.053초 정도 걸렸다. 별로 안걸린것 같지만 사실 느린편이고 데이터가 몇억건이 있다고 생각하면 속도는 현저히 줄어들 것이다.
+    * 그렇다면 인덱스를 생성후 다시 검색하면 어떨까? 결과는 0.003초가 나왔다. 결국 인덱스는 검색을 빠르게 해준다는 큰 장점이 있다 (실행계획타입은 ref) 
+    * alter table employees add key(=index) (first_name);  해당 명령어는 first_name에 대한 인덱스를 데이터베이스가 가지고 있어 first_name을 활용한 검색에 큰 도움을 주게된다.
+   * 인덱스(키)의 종류
+     * 인덱스의 종류와 만들기
+      * alter table table_name add primary key ...
+       * pk가 있는 테이블은 자동적으로 pk를 기준으로 솔팅되기 때문에 pk를 통한 검색은 인덱스를 찾지 않는다.
+      * alter table table_name unique key_name...
+       * 테이블에 한개밖에 없는 값을 나타내기에 하나의 내용을 찾기위해 검색시 유용하다.
+      * alter table table_name add KEY key_name...
+       * 일반적인 인덱스(키)가 key 이다.
+      * alter table table_name add FULLTEXT key_name...
+    * 일반적으로 다음의 경우에 인덱스를 만든다
+     * Where 절에서 비교하는 '컬럼'
+     * order by 로 정렬하는 컬럼
+     * group by 로 그룹화 하는 컬럼
+   
+   * 다만 인덱스는 검색에서는 좋은 성능을 자랑하지만 추가,수정,삭제의 경우는 만들어진 인덱스에 끼워넣거나 변경하거나, 빼주는 과정을 거치기때문에 성능이 저하된다. 결국 꼭 필요한 컬럼에만 인덱스를 설정해야 한다.
+   * 또한 인덱스 설정도 잘해줘야한다. 예를들어 first_name과 last_name둘을 하나의 인덱스로 잡아놓으면 first_name을 기준으로 정렬되어 검색하고 first_name이 같은 것중 last_name을 정렬하기 때문에 last_name만으로 검색시에는 인덱스를 사용하지 않게된다.
+
+ ### 실행계획
+ | type | 설명 | 
+ |---|---|
+ | const | pk나 uk를 사용해서 1건을 가져오는 쿼리 |
+ | eq-ref | 조인에서 두번쨰 이후에 읽는 테이블의 프라이머리키로 조인 |
+ | ref | 인덱스에 equal검색 |
+ | fulltext | 전문검색 인덱스를 활용 |
+ | range | 인덱스를 범위로 검색 | 
+ | ALL | 테이블 full scan |
+ 
+ * eq-ref : 일반적으로 조인은 where조건이 있는 쪽이 먼저 조인의 앞 테이블이 되는것이 일반적으로 빠르다. 먼저 조건에 대한 데이터를 찾아 놓고 조인하는 편이 빠르기 때문. explain 쿼리문 으로 쿼리 실행단계를 살펴보고 결정하는게 좋은 방법.
+ * ref : 일반적 인덱스 적용시 실행계획.
+ * range : 인덱스가 있는 컬럼을 where구문에 범위를 적용해 검색된 실행
+
+ ### Like, fullText
+  > 해당 people 테이블에 name에 인덱스가 있는 상황이다.
+  ```
+  CREATE TABLE `people` (
+   `peopleCd` char(8) NOT NULL,
+   `name` varchar(20) NOT NULL,
+   `nameEn` varchar(100) NOT NULL,
+   `repRole` varchar(20) NOT NULL,
+   PRIMARY KEY (`peopleCd`),
+   KEY `name_2` (`name`),
+   FULLTEXT KEY `name` (`name`),
+   FULLTEXT KEY `nameEn` (`nameEn`)
+ ) ENGINE=InnoDB DEFAULT CHARSET=utf8 |
+  ```
+ 
+  #### Like
+  * like 연산 뒤의 % 는 와일드카드라고 한다.
+  * 이름이 '이병'으로 시작하는 사람 (good query) 
+   * select peopleCd, name from people where name like '이병%'
+    * 위처럼 like연산 뒤에 첫 글자가 있으므로 정렬되어있는 인덱스로 검색이 가능하다. '이병'으로 시작하는 처음부터 끝까지 찾는다는 명령. 실행계획을 봐도 '이병ㄱ'~'이병ㅎ'까지의 검색이기 때문에 range 타입으로 실행된다. 
+   * select peopleCd, name from people where name like '%병헌' (bad query)
+   * select peopleCd, name from people where name like '%병%' (bad query)
+    * 와일드카드가 검색어 앞에온경우에는 강력한 검색을(넓은 범위의 검색을) 할수 있지만 인덱스를 타고 검색을 할수 없기 때문에 속도가 느리다.
+  => Like 연산은 왠만하면 % 지양해야 한다. 데이터가 많으면 많을수록 속도가 느려진다..
+   
+  #### Full-Text Search (전체문서 검색)
+  > Full-Text Search는 인덱스를 통해 단어별로 쪼개서 검색이 가능하게 하는 검색기능이다. 만약 '로마의 휴일' 이라는 단어중 '휴일' 검색을 통해 찾을땐 Like는 " like '%휴일' " 이렇게 검색하기 때문에 인덱스를 타지 못해 속도가 느리다.  
+  * fulltext 생성 : alter table table_name add fulltext key_name (target_column);
+  * fulltext 삭제 : alter table table_name drop key_name; 
+   
 ## CHAR과 VARCHAR에 대해
-> char(n)은 고정길이 n개의 바이트를 말하고 varchar(n)은 가변길이 최대 n개의 바이트를 말한다. 예를 들어서 char(50)의 경우 50자리 까지 넣을수 있는 고정문자열이 생성되고 varchar(50)은 50자리까지 넣을수있는 가변길이 문자열이 된다. 즉 '12345'라는 물자열을 해당 필드에 넣을때 char의 경우 12345가 입력된 후 입력값을 제외한 45자리가 남게되고 varchar는 12345 딱 5개의 문자만 입력되고 존재하게 된다.
+> char(n)은 고정길이 n개의 바이트를 말하고 varchar(n)은 가변길이 최대 n개의 바이트를 말한다. 예를 들어서 char(50)의 경우 50자리 까지 넣을수 있는 고정문자열이 생성되고 varchar(50)은 50자리까지 넣을수있는 가변길이 문자열이 된다. 즉 'abcde'라는 문자열을 해당 필드에 넣을때 char의 경우 abcde가 입력된 후 입력값을 제외한 45자리가 남게되고 varchar는 abcde 딱 5개의 문자만 입력되고 존재하게 된다.
 
 ## JOIN이란
 > 관계형 DB에선 중복 데이터를 피하기 위해 데이터의 속성을 분류해 여러 테이블로 나누어 놓는 '정규화' 작업을 한다. 이렇게 정규화된 데이터에서 원하는 결과를 도출하기 위해 여러 테이블을 조합할 필요성이 생기는데 이런경우 사용하는 명령어가 컬럼을 기준으로 행을 합쳐 가상의 테이블 처럼 만들어 결과를 보여주는 연산인 **JOIN** 이다.  
++ JOIN관계의 두 테이블이 n:1의 경우엔 n쪽에서 1쪽으로 JOIN하는게 속도가 빠르다.
+
 **조인의 대표적 종류**
  1) INNER JOIN
  2) OUTER JOIN
