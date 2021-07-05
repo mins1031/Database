@@ -232,7 +232,7 @@ ex )
  * ref : 일반적 인덱스 적용시 실행계획.
  * range : 인덱스가 있는 컬럼을 where구문에 범위를 적용해 검색된 실행
 
- ### Like, fullText
+ ### Like
   > 해당 people 테이블에 name에 인덱스가 있는 상황이다.
   ```
   CREATE TABLE `people` (
@@ -246,8 +246,6 @@ ex )
    FULLTEXT KEY `nameEn` (`nameEn`)
  ) ENGINE=InnoDB DEFAULT CHARSET=utf8 |
   ```
- 
-  #### Like
   * like 연산 뒤의 % 는 와일드카드라고 한다.
   * 이름이 '이병'으로 시작하는 사람 (good query) 
    * select peopleCd, name from people where name like '이병%'
@@ -257,11 +255,99 @@ ex )
     * 와일드카드가 검색어 앞에온경우에는 강력한 검색을(넓은 범위의 검색을) 할수 있지만 인덱스를 타고 검색을 할수 없기 때문에 속도가 느리다.
   => Like 연산은 왠만하면 % 지양해야 한다. 데이터가 많으면 많을수록 속도가 느려진다..
    
-  #### Full-Text Search (전체문서 검색)
-  > Full-Text Search는 인덱스를 통해 단어별로 쪼개서 검색이 가능하게 하는 검색기능이다. 만약 '로마의 휴일' 이라는 단어중 '휴일' 검색을 통해 찾을땐 Like는 " like '%휴일' " 이렇게 검색하기 때문에 인덱스를 타지 못해 속도가 느리다.  
-  * fulltext 생성 : alter table table_name add fulltext key_name (target_column);
-  * fulltext 삭제 : alter table table_name drop key_name; 
-   
+ ### Full-Text Search (전체문서 검색)
+ > CREATE TABLE `movie` (
+  `movieCd` char(8) NOT NULL,
+  `title` varchar(100) NOT NULL,
+  `titleEn` varchar(100) NOT NULL,
+  `productYear` char(4) NOT NULL,
+  `openDate` date NOT NULL,
+  `nation` varchar(20) NOT NULL,
+  `genre` varchar(20) NOT NULL,
+  PRIMARY KEY (`movieCd`),
+  KEY `nation` (`nation`),
+  FULLTEXT KEY `title` (`title`),
+  FULLTEXT KEY `titleEn` (`titleEn`));
+  
+ > Full-Text Search는 인덱스를 통해 단어별로 쪼개서 검색이 가능하게 하는 검색기능이다. 만약 '로마의 휴일' 이라는 단어중 '휴일' 검색을 통해 찾을땐 Like는 " like '%휴일' " 이렇게 검색하기 때문에 인덱스를 타지 못해 속도가 느리다.  
+ * fulltext 생성 : alter table table_name add fulltext key_name (target_column);
+ * fulltext 삭제 : alter table table_name drop key_name ; 
+ * '로마의 휴일'이라는 제목의 영화를 검색시
+  * select * from movie where match(title) against('로마') : '로마' 라는 단어가 들어간 영화를 찾는다.match(탐색할 컬럼명), against(탐색할 단어)의 문법이다. 근데 '로마의 휴일'은 목록에 없다. 즉 title 컬럼내에 '로마'라는 단어자체를 검색해서 찾는 것이기 때문에 ' '로마의' 휴일' 은 검색되지 않는다.
+  * 다만 match내의 컬럼명은 fulltext 인덱스가 적용되어있어야한다.   
+  * select * from movie where match(title) against('로마*' in boolean mode): fulltext에서도 ' * ' 를 사용해 와일드카드를 사용할 수 있고 boolean모드에서 사용가능하기 때문에 in boolean mode라는 것을 명시해서 함께 사용해줘야 한다. 이렇게 되면 '로마의 휴일'을 찾을수 있고 '열정의 람바다'라는 것도 ('열정*' in boolean mode) 이러한 방식으로 찾을 수 있다.
+  * 또한 boolean mode에선 강력한 검색도 사용할 수 있는데 단어 앞에 +를 붙히면 필수검색 단어라는 명시를 해줄수 있다.
+  ```
+  select * from movie where match(title) against('+열정* +냉정*' in boolean mode) 은 열정과 냉정이라는 단어가 들어간 단어를 모두 찾아준다 ex => '냉정과 열정사이'  
+  select * from movie where match(title) against('+열정* -냉정*' in boolean mode) 은 열정은 꼭 포함되고 냉정은 없어하는 조건이다 ex => '냉정'이들어간 영화제목들.
+  select * from movie where match(title) against('열정*, 냉정*' in boolean mode) 은 둘중에 하나라도 있는 것들을 모두 검색해준다.
+  ``` 
+  
+  ### Group by
+  > group by는 어떤한 항목별로 조회할경우 사용된다. 
+  ``` 
+  salarie 테이블
+  +-----------+---------+------+-----+---------+-------+
+| Field     | Type    | Null | Key | Default | Extra |
++-----------+---------+------+-----+---------+-------+
+| emp_no    | int(11) | NO   | PRI | NULL    |       |
+| salary    | int(11) | NO   |     | NULL    |       |
+| from_date | date    | NO   | PRI | NULL    |       |
+| to_date   | date    | NO   |     | NULL    |       |
++-----------+---------+------+-----+---------+-------+
+
+  employees 테이블
+  +------------+---------------+------+-----+---------+-------+
+| Field      | Type          | Null | Key | Default | Extra |
++------------+---------------+------+-----+---------+-------+
+| emp_no     | int(11)       | NO   | PRI | NULL    |       |
+| birth_date | date          | NO   |     | NULL    |       |
+| last_name  | varchar(16)   | NO   | MUL | NULL    |       |
+| gender     | enum('M','F') | NO   |     | NULL    |       |
+| hire_date  | date          | NO   |     | NULL    |       |
++------------+---------------+------+-----+---------+-------+
+
+dept_emp 테이블
++-----------+---------+------+-----+---------+-------+
+| Field     | Type    | Null | Key | Default | Extra |
++-----------+---------+------+-----+---------+-------+
+| emp_no    | int(11) | NO   | PRI | NULL    |       |
+| dept_no   | char(4) | NO   | PRI | NULL    |       |
+| from_date | date    | NO   |     | NULL    |       |
+| to_date   | date    | NO   |     | NULL    |       |
++-----------+---------+------+-----+---------+-------+
+
+ department 테이블
+ +------------+---------------+------+-----+---------+-------+
+| Field      | Type          | Null | Key | Default | Extra |
++------------+---------------+------+-----+---------+-------+
+| emp_no     | int(11)       | NO   | PRI | NULL    |       |
+| birth_date | date          | NO   |     | NULL    |       |
+| last_name  | varchar(16)   | NO   | MUL | NULL    |       |
+| gender     | enum('M','F') | NO   |     | NULL    |       |
+| hire_date  | date          | NO   |     | NULL    |       |
++------------+---------------+------+-----+---------+-------+
+  ```
+   * ex 사원별 최고 연봉 쿼리 : 
+   ```
+   select emp_no, max(salary) max_salary , min(salary) min_salary from salaries group by emp_no order by max_salary desc limit 10; => 사원들중 연봉이 제일 높은 사원순으로 10개를 조회하는 쿼리. '사원'으로 데이터가 묶여 최다연봉기준으로 출력된다.
+   ```
+   * ex 부서별 최고 연봉 쿼리 :
+   ``` 
+   select dept_no, max(salary) max_salary , min(salary) min_salary from salaries join dept_emp using(emp_no) group by dept_no order by max_salary; => 부서들중 연봉이 제일 높은 부서 순으로 조회하는 쿼리. '부서'별로 데이터가 묶여 연봉이 계산되 출력된다. 
+   ```
+   * ex 개인별 연봉 누적 총액 (단 1996년 이후 , 누적연봉 100만 달러이상만) : 
+   ```
+   select emp_no,last_name, sum(salary) sum_salary,from_date
+   from salaries join employees using(emp_no) 
+   where from_date >= '1996-01-01' 
+   group by emp_no 
+   having sum_salary >= 1000000 
+   order by sum_salary desc 
+   limit 10;
+   => 조금 복잡하지만 찬찬히 본다면 1996년 이후라는 조건은 where 절에, 누적연봉 100달러 이상은 having 조건에 들어간다. (참고로 having은 group by에 대한 조건문이다.) 누적연봉 sum_salary 컬럼은 sum함수를 사용하며 준 임시 컬럼이름이다 where절은 기존 테이블의 컬럼을 조회하기 때문에 sum_salary를 인식할수 없다. 그렇기에 having에 묶어주어야 조건을 만족시킬수 있다. 
+   ```
+
 ## CHAR과 VARCHAR에 대해
 > char(n)은 고정길이 n개의 바이트를 말하고 varchar(n)은 가변길이 최대 n개의 바이트를 말한다. 예를 들어서 char(50)의 경우 50자리 까지 넣을수 있는 고정문자열이 생성되고 varchar(50)은 50자리까지 넣을수있는 가변길이 문자열이 된다. 즉 'abcde'라는 문자열을 해당 필드에 넣을때 char의 경우 abcde가 입력된 후 입력값을 제외한 45자리가 남게되고 varchar는 abcde 딱 5개의 문자만 입력되고 존재하게 된다.
 
