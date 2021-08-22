@@ -203,17 +203,17 @@ ex )
    * alter table employees add key(=index) (first_name);  해당 명령어는 first_name에 대한 인덱스를 데이터베이스가 가지고 있어 first_name을 활용한 검색에 큰 도움을 주게된다.
    * 인덱스(키)의 종류
      * 인덱스의 종류와 만들기
-      * alter table table_name add primary key ...
-       * pk가 있는 테이블은 자동적으로 pk를 기준으로 솔팅되기 때문에 pk를 통한 검색은 인덱스를 찾지 않는다.
-      * alter table table_name unique key_name...
-       * 테이블에 한개밖에 없는 값을 나타내기에 하나의 내용을 찾기위해 검색시 유용하다.
-      * alter table table_name add KEY key_name...
-       * 일반적인 인덱스(키)가 key 이다.
-      * alter table table_name add FULLTEXT key_name...
-    * 일반적으로 다음의 경우에 인덱스를 만든다
-     * Where 절에서 비교하는 '컬럼'
-     * order by 로 정렬하는 컬럼
-     * group by 로 그룹화 하는 컬럼
+       * alter table table_name add primary key ...
+        * pk가 있는 테이블은 자동적으로 pk를 기준으로 솔팅되기 때문에 pk를 통한 검색은 인덱스를 찾지 않는다.
+       * alter table table_name unique key_name...
+        * 테이블에 한개밖에 없는 값을 나타내기에 하나의 내용을 찾기위해 검색시 유용하다.
+       * alter table table_name add KEY key_name...
+        * 일반적인 인덱스(키)가 key 이다.
+       * alter table table_name add FULLTEXT key_name...
+     * 일반적으로 다음의 경우에 인덱스를 만든다
+       * Where 절에서 비교하는 '컬럼'
+       * order by 로 정렬하는 컬럼
+       * group by 로 그룹화 하는 컬럼
    
    * 다만 인덱스는 검색에서는 좋은 성능을 자랑하지만 추가,수정,삭제의 경우는 만들어진 인덱스에 끼워넣거나 변경하거나, 빼주는 과정을 거치기때문에 성능이 저하된다. 결국 꼭 필요한 컬럼에만 인덱스를 설정해야 한다.
    * 또한 인덱스 설정도 잘해줘야한다. 예를들어 first_name과 last_name둘을 하나의 인덱스로 잡아놓으면 first_name을 기준으로 정렬되어 검색하고 first_name이 같은 것중 last_name을 정렬하기 때문에 last_name만으로 검색시에는 인덱스를 사용하지 않게된다.
@@ -249,10 +249,11 @@ ex )
   * like 연산 뒤의 % 는 와일드카드라고 한다.
   * 이름이 '이병'으로 시작하는 사람 (good query) 
    * select peopleCd, name from people where name like '이병%'
-    * 위처럼 like연산 뒤에 첫 글자가 있으므로 정렬되어있는 인덱스로 검색이 가능하다. '이병'으로 시작하는 처음부터 끝까지 찾는다는 명령. 실행계획을 봐도 '이병ㄱ'~'이병ㅎ'까지의 검색이기 때문에 range 타입으로 실행된다. 
+     * 위처럼 like연산 뒤에 첫 글자가 있으므로 정렬되어있는 인덱스로 검색이 가능하다. '이병'으로 시작하는 처음부터 끝까지 찾는다는 명령. 실행계획을 봐도 '이병ㄱ'~'이병ㅎ'까지의 검색이기 때문에 range 타입으로 실행된다. 
    * select peopleCd, name from people where name like '%병헌' (bad query)
    * select peopleCd, name from people where name like '%병%' (bad query)
-    * 와일드카드가 검색어 앞에온경우에는 강력한 검색을(넓은 범위의 검색을) 할수 있지만 인덱스를 타고 검색을 할수 없기 때문에 속도가 느리다.
+     * 와일드카드가 검색어 앞에온경우에는 강력한 검색을(넓은 범위의 검색을) 할수 있지만 인덱스를 타고 검색을 할수 없기 때문에 속도가 느리다.
+   
   => Like 연산은 왠만하면 % 지양해야 한다. 데이터가 많으면 많을수록 속도가 느려진다..
    
  ### Full-Text Search (전체문서 검색)
@@ -273,9 +274,9 @@ ex )
  * fulltext 생성 : alter table table_name add fulltext key_name (target_column);
  * fulltext 삭제 : alter table table_name drop key_name ; 
  * '로마의 휴일'이라는 제목의 영화를 검색시
-  * select * from movie where match(title) against('로마') : '로마' 라는 단어가 들어간 영화를 찾는다.match(탐색할 컬럼명), against(탐색할 단어)의 문법이다. 근데 '로마의 휴일'은 목록에 없다. 즉 title 컬럼내에 '로마'라는 단어자체를 검색해서 찾는 것이기 때문에 ' '로마의' 휴일' 은 검색되지 않는다.
-  * 다만 match내의 컬럼명은 fulltext 인덱스가 적용되어있어야한다.   
-  * select * from movie where match(title) against('로마*' in boolean mode): fulltext에서도 ' * ' 를 사용해 와일드카드를 사용할 수 있고 boolean모드에서 사용가능하기 때문에 in boolean mode라는 것을 명시해서 함께 사용해줘야 한다. 이렇게 되면 '로마의 휴일'을 찾을수 있고 '열정의 람바다'라는 것도 ('열정*' in boolean mode) 이러한 방식으로 찾을 수 있다.
+   * select * from movie where match(title) against('로마') : '로마' 라는 단어가 들어간 영화를 찾는다.match(탐색할 컬럼명), against(탐색할 단어)의 문법이다. 근데 '로마의 휴일'은 목록에 없다. 즉 title 컬럼내에 '로마'라는 단어자체를 검색해서 찾는 것이기 때문에 ' '로마의' 휴일' 은 검색되지 않는다.
+   * 다만 match내의 컬럼명은 fulltext 인덱스가 적용되어있어야한다.   
+   * select * from movie where match(title) against('로마*' in boolean mode): fulltext에서도 ' * ' 를 사용해 와일드카드를 사용할 수 있고 boolean모드에서 사용가능하기 때문에 in boolean mode라는 것을 명시해서 함께 사용해줘야 한다. 이렇게 되면 '로마의 휴일'을 찾을수 있고 '열정의 람바다'라는 것도 ('열정*' in boolean mode) 이러한 방식으로 찾을 수 있다.
   * 또한 boolean mode에선 강력한 검색도 사용할 수 있는데 단어 앞에 +를 붙히면 필수검색 단어라는 명시를 해줄수 있다.
   ```
   select * from movie where match(title) against('+열정* +냉정*' in boolean mode) 은 열정과 냉정이라는 단어가 들어간 단어를 모두 찾아준다 ex => '냉정과 열정사이'  
