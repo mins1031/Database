@@ -453,10 +453,12 @@ dept_emp 테이블
  <img src="https://t1.daumcdn.net/cfile/tistory/994CAA425A2F96501C"/>
  
  ### 트랜잭션의 연산
+ 
  1) COMMIT 연산
   * 모든 작업을 정상적으로 처리하겠다고 확정하는 명령어로 처리과정을 DB에 영구저장 하는것이다.
   * Commit은 하나의 트랜잭션 과정을 종료하는 것이고 이전 데이터가 완전히 수정된다.
   <img src="https://t1.daumcdn.net/cfile/tistory/995E053D5ADE8AC410"/>
+  
   * 위 그림중 첫번쨰 커밋후 뒤 update,delete,insert 명령을 진행한다. 만약 3-4-5과정이 오류없이 수행되었다면 지금까지 실행한 3-4-5작업을 한번에 DB에 적용하는 명령으로 COMMIT을 수행한다.
  
  2) Rollback 연산
@@ -479,6 +481,7 @@ dept_emp 테이블
 
 ### 트랜잭션의 상태
 <img src="https://t1.daumcdn.net/cfile/tistory/991020485ADE85BF0D"/> 
+
 1) 활동 : 트랜잭션이 시작하였거나 실행중에 있는 상태.
 2) 부분완료 : Commit연산이 실행되기 직전의 상태로 마지막 명령을 수행한 직후의 상태라고도 볼수 있다
 3) 완료 : 트랜잭션이 성공적으로 종료되 Commit연산을 실행한 후의 상태
